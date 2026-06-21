@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATM Incident Operations — CS1 Riyadh</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0B1220;
+  --surface:#121A2C;
+  --surface-2:#161F35;
+  --border:#243150;
+  --text:#E7ECF5;
+  --text-dim:#8C97B3;
+  --teal:#2DD9C4;
+  --amber:#FBBF6B;
+  --red:#FF7A7A;
+  --blue:#6FA8FF;
+  --teal-dim:rgba(45,217,196,0.14);
+  --chart-grid:#1B2640;
+}
+:root[data-theme="light"]{
+  --bg:#F3F5FA;
+  --surface:#FFFFFF;
+  --surface-2:#EDF0F7;
+  --border:#DEE3EE;
+  --text:#1A2233;
+  --text-dim:#6B7486;
+  --teal:#0E9C8C;
+  --amber:#B8740F;
+  --red:#D64545;
+  --blue:#2563EB;
+  --teal-dim:rgba(14,156,140,0.1);
+  --chart-grid:#E3E7F0;
+}
+body{transition:background-color .25s ease, color .25s ease;}
+.card, .ticket-strip, footer{transition:background-color .25s ease, border-color .25s ease;}
+
+.theme-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:5px;
+  cursor:pointer;
+  user-select:none;
+}
+.theme-toggle .opt{
+  width:30px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:18px;
+  font-size:13px;
+  color:var(--text-dim);
+  transition:background-color .2s, color .2s;
+}
+.theme-toggle .opt.active{
+  background:var(--teal);
+  color:#0B1220;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.display{font-family:'Space Grotesk',sans-serif;}
+
+/* HEADER */
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  padding:28px 36px 20px;
+  border-bottom:1px solid var(--border);
+}
+.topbar .brand-eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--teal);
+  margin-bottom:8px;
+}
+.topbar h1{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:26px;
+  font-weight:600;
+  margin:0;
+  letter-spacing:-0.01em;
+}
+.topbar .meta{
+  text-align:right;
+  font-size:12px;
+  color:var(--text-dim);
+  line-height:1.6;
+}
+.live-dot{
+  display:inline-block;
+  width:7px;height:7px;
+  border-radius:50%;
+  background:var(--teal);
+  margin-right:6px;
+  box-shadow:0 0 0 0 rgba(45,217,196,0.6);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(45,217,196,0.45);}
+  70%{box-shadow:0 0 0 6px rgba(45,217,196,0);}
+  100%{box-shadow:0 0 0 0 rgba(45,217,196,0);}
+}
+
+.container{padding:0 36px 48px;}
+
+/* KPI TICKET STRIP */
+.ticket-strip{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+  margin-top:24px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+}
+.ticket{
+  padding:22px 24px;
+  border-right:1px dashed var(--border);
+  position:relative;
+}
+.ticket:last-child{border-right:none;}
+.ticket .label{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  color:var(--text-dim);
+  margin-bottom:10px;
+}
+.ticket .value{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:32px;
+  font-weight:600;
+  letter-spacing:-0.02em;
+}
+.ticket .sub{
+  margin-top:6px;
+  font-size:12px;
+  color:var(--text-dim);
+}
+.ticket .sub.good{color:var(--teal);}
+.ticket .sub.warn{color:var(--amber);}
+
+/* PERFORATION */
+.perf{
+  height:14px;
+  margin:0 1px;
+  background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--border) 5px 6px),
+                     repeating-linear-gradient(45deg, transparent 0 5px, var(--border) 5px 6px);
+  background-size:12px 14px;
+  background-repeat:repeat-x;
+  background-position: 0 0, 0 0;
+  opacity:0.7;
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 4%, black 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 4%, black 96%, transparent);
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px;
+  margin-top:18px;
+}
+.span-3{grid-column:span 3;}
+.span-2{grid-column:span 2;}
+.span-1{grid-column:span 1;}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px 22px;
+}
+.card h3{
+  margin:0 0 2px;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:15px;
+  font-weight:600;
+}
+.card .card-sub{
+  font-size:12px;
+  color:var(--text-dim);
+  margin-bottom:14px;
+}
+.chart-wrap{position:relative;}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:18px;
+  margin-top:18px;
+}
+.term-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+.term-total{
+  font-size:30px;
+  font-weight:600;
+  color:var(--text);
+}
+.top-issue-badge{
+  margin-top:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--teal-dim);
+  border:1px solid rgba(45,217,196,0.3);
+  border-radius:10px;
+  padding:10px 14px;
+}
+.top-issue-badge .label{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--teal);
+  font-weight:600;
+}
+.top-issue-badge .name{
+  font-size:13px;
+  color:var(--text);
+  flex:1;
+}
+.top-issue-badge .count{
+  font-size:12px;
+  color:var(--text-dim);
+}
+
+/* ROUTING LIST */
+.route-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:9px 0;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+.route-row:last-child{border-bottom:none;}
+.route-name{flex:1;color:var(--text);}
+.route-bar-bg{
+  flex:1;
+  height:6px;
+  background:var(--surface-2);
+  border-radius:4px;
+  overflow:hidden;
+}
+.route-bar-fill{height:100%;border-radius:4px;background:var(--teal);}
+.route-pct{
+  font-family:'IBM Plex Mono',monospace;
+  width:42px;
+  text-align:right;
+  color:var(--text-dim);
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{
+  text-align:left;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  color:var(--text-dim);
+  padding:0 10px 10px;
+  border-bottom:1px solid var(--border);
+  font-weight:500;
+}
+tbody td{
+  padding:11px 10px;
+  border-bottom:1px solid var(--border);
+}
+tbody tr:last-child td{border-bottom:none;}
+.pill{
+  display:inline-block;
+  padding:3px 9px;
+  border-radius:20px;
+  font-size:11px;
+  font-family:'IBM Plex Mono',monospace;
+}
+.pill.high{background:rgba(255,122,122,0.14);color:var(--red);}
+.pill.mid{background:rgba(251,191,107,0.14);color:var(--amber);}
+
+footer{
+  margin-top:26px;
+  padding:16px 22px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface);
+  font-size:12px;
+  color:var(--text-dim);
+  line-height:1.7;
+}
+footer b{color:var(--text);}
+
+@media (max-width:980px){
+  .ticket-strip{grid-template-columns:repeat(2,1fr);}
+  .ticket:nth-child(2){border-right:none;}
+  .grid{grid-template-columns:1fr;}
+  .span-1,.span-2,.span-3{grid-column:span 1;}
+  .topbar{flex-direction:column;align-items:flex-start;gap:10px;}
+  .topbar .meta{text-align:left;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="brand-eyebrow">ATM Helpdesk · Incident Operations</div>
+    <h1>ATM Dashboard</h1>
+  </div>
+  <div style="display:flex; align-items:flex-end; gap:18px;">
+    <div class="meta">
+      <div><span class="live-dot"></span>Reporting window: <b style="color:var(--text)">Jan 20 – Jun 16, 2026</b></div>
+      <div>2 ATM monitored · 73 incidents logged</div>
+    </div>
+    <div class="theme-toggle" id="themeToggle" role="button" tabindex="0" aria-label="Toggle dark or light mode">
+      <div class="opt" id="optDark">🌙</div>
+      <div class="opt" id="optLight">☀️</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI STRIP -->
+  <div class="ticket-strip">
+    <div class="ticket">
+      <div class="label">Total Incidents</div>
+      <div class="value">73</div>
+      <div class="sub">Across 2 ATMs, 6 months</div>
+    </div>
+    <div class="ticket">
+      <div class="label">Avg. Resolution Time</div>
+      <div class="value">6.9<span style="font-size:16px;font-weight:400;color:var(--text-dim);"> hrs</span></div>
+      <div class="sub">Median 4.5 hrs · open → closed</div>
+    </div>
+    <div class="ticket">
+      <div class="label">Resolved Within 4h*</div>
+      <div class="value">45%</div>
+    </div>
+    <div class="ticket">
+      <div class="label">Open Backlog</div>
+      <div class="value">0</div>
+      <div class="sub good">100% closed or resolved — no carryover</div>
+    </div>
+  </div>
+  <div class="perf"></div>
+
+  <!-- ROW: trend -->
+  <div class="grid">
+    <div class="card span-3">
+      <h3>Monthly Incident Volume vs. Resolution Time</h3>
+      <div class="card-sub">Volume climbs through March–May; June is partial (only 16 days of data captured)</div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: breakdowns -->
+  <div class="grid">
+    <div class="card span-1">
+      <h3>Reported Fault Types</h3>
+      <div class="card-sub">Dispenser issues dominate the queue</div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="faultChart"></canvas>
+      </div>
+    </div>
+    <div class="card span-1">
+      <h3>Avg. MTTR by Fault Type</h3>
+      <div class="card-sub">Hours to resolve, top reported faults</div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="mttrChart"></canvas>
+      </div>
+    </div>
+    <div class="card span-1">
+      <h3>ATM Comparison</h3>
+      <div class="card-sub">7L01800RW1 carries 2x the incident load — see breakdown below</div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="terminalChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW: weekday + routing -->
+  <div class="grid">
+    <div class="card span-2">
+      <h3>Incidents by Day of Week</h3>
+      <div class="card-sub">Monday and Tuesday see the heaviest fault reporting</div>
+      <div class="chart-wrap" style="height:210px;">
+        <canvas id="weekdayChart"></canvas>
+      </div>
+    </div>
+    <div class="card span-1">
+      <h3>Routing / Assignment Groups</h3>
+      <div class="card-sub">Almost all tickets land on one team</div>
+      <div id="routingList" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- ROW: per-terminal issue breakdown -->
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="term-head">
+        <div>
+          <h3>7L01800RW0</h3>
+          <div class="card-sub">ATM detail</div>
+        </div>
+        <div class="term-total mono">26</div>
+      </div>
+      <div class="top-issue-badge">
+        <span class="label">Top Issue</span>
+        <span class="name">Dispenser issue</span>
+        <span class="count mono">10 incidents</span>
+      </div>
+      <div id="rw0List" style="margin-top:14px;"></div>
+    </div>
+    <div class="card">
+      <div class="term-head">
+        <div>
+          <h3>7L01800RW1</h3>
+          <div class="card-sub">ATM detail</div>
+        </div>
+        <div class="term-total mono">47</div>
+      </div>
+      <div class="top-issue-badge">
+        <span class="label">Top Issue</span>
+        <span class="name">Dispenser issue</span>
+        <span class="count mono">19 incidents</span>
+      </div>
+      <div id="rw1List" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="grid">
+    <div class="card span-3">
+      <h3>Longest Open-to-Close Durations</h3>
+      <div class="card-sub">The five slowest resolutions in the window — candidates for root-cause review</div>
+      <table>
+        <thead>
+          <tr><th>Incident</th><th>ATM</th><th>Reported Fault</th><th>Month</th><th>Resolution Time</th></tr>
+        </thead>
+        <tbody id="longestTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <b>Data window:</b> Jan 20, 2026 – Jun 16, 2026 (June is incomplete — only 3 incidents logged so far this month, not a real drop in volume).
+    <b>Status model:</b> the source data only records <i>Closed</i> (90.4%) and <i>Resolved</i> (9.6%) — there is no "open" state in this dataset, so the backlog figure reflects that.
+    <b>SLA note:</b> a 4-hour resolution target is shown for reference only; replace it with your contracted SLA threshold once confirmed.
+  </footer>
+
+</div>
+
+<script>
+Chart.defaults.color = '#8C97B3';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.borderColor = '#243150';
+
+const months = ["Jan","Feb","Mar","Apr","May","Jun*"];
+const counts = [7,11,22,14,16,3];
+const mttr = [13.4,3.3,5.0,8.9,7.5,5.5];
+
+const trendChart = new Chart(document.getElementById("trendChart"), {
+  data: {
+    labels: months,
+    datasets: [
+      {
+        type:'bar',
+        label:'Incidents',
+        data: counts,
+        backgroundColor:'rgba(45,217,196,0.85)',
+        borderRadius:6,
+        maxBarThickness:46,
+        yAxisID:'y'
+      },
+      {
+        type:'line',
+        label:'Avg MTTR (hrs)',
+        data: mttr,
+        borderColor:'#FBBF6B',
+        backgroundColor:'#FBBF6B',
+        tension:0.35,
+        pointRadius:4,
+        pointBackgroundColor:'#FBBF6B',
+        yAxisID:'y1'
+      }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{legend:{position:'top', align:'end', labels:{boxWidth:10, boxHeight:10}}},
+    scales:{
+      y:{position:'left', grid:{color:'#1B2640'}, title:{display:true,text:'Incidents'}},
+      y1:{position:'right', grid:{display:false}, title:{display:true,text:'Hours'}}
+    }
+  }
+});
+
+const faultChart = new Chart(document.getElementById("faultChart"), {
+  type:'doughnut',
+  data:{
+    labels:['Dispenser issue','Card reader jam','No Transaction','Card reader issues','Other (8 types)'],
+    datasets:[{
+      data:[29,18,13,3,10],
+      backgroundColor:['#2DD9C4','#6FA8FF','#FBBF6B','#A78BFA','#3A4666'],
+      borderColor:'#121A2C',
+      borderWidth:3
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    cutout:'62%',
+    plugins:{legend:{position:'bottom', labels:{boxWidth:9, boxHeight:9, font:{size:11}, padding:10}}}
+  }
+});
+
+const mttrChart = new Chart(document.getElementById("mttrChart"), {
+  type:'bar',
+  data:{
+    labels:['Card reader jam','Card Capture','Dispenser issue','Communication issue','Card reader issues','No Transaction'],
+    datasets:[{
+      data:[8.0,8.7,6.1,5.1,4.6,3.7],
+      backgroundColor:'#FBBF6B',
+      borderRadius:5
+    }]
+  },
+  options:{
+    indexAxis:'y',
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:'#1B2640'}, title:{display:true,text:'Avg hours'}},
+      y:{grid:{display:false}}
+    }
+  }
+});
+
+const terminalChart = new Chart(document.getElementById("terminalChart"), {
+  data:{
+    labels:['7L01800RW0','7L01800RW1'],
+    datasets:[
+      {type:'bar', label:'Incidents', data:[26,47], backgroundColor:'#2DD9C4', borderRadius:6, yAxisID:'y'},
+      {type:'line', label:'Avg MTTR (hrs)', data:[6.3,7.2], borderColor:'#FBBF6B', backgroundColor:'#FBBF6B', pointRadius:5, yAxisID:'y1'}
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom', labels:{boxWidth:9, boxHeight:9, font:{size:11}}}},
+    scales:{
+      y:{position:'left', grid:{color:'#1B2640'}, title:{display:true,text:'Incidents'}},
+      y1:{position:'right', grid:{display:false}, title:{display:true,text:'Hours'}}
+    }
+  }
+});
+
+const weekdayChart = new Chart(document.getElementById("weekdayChart"), {
+  type:'bar',
+  data:{
+    labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets:[{
+      data:[13,13,10,8,8,12,9],
+      backgroundColor:'#6FA8FF',
+      borderRadius:6,
+      maxBarThickness:44
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      y:{grid:{color:'#1B2640'}, title:{display:true,text:'Incidents'}},
+      x:{grid:{display:false}}
+    }
+  }
+});
+
+const rw0Issues = [
+  {name:'Dispenser issue', count:10},
+  {name:'Card reader jam', count:5},
+  {name:'No Transaction', count:3},
+  {name:'Card reader issues', count:2},
+  {name:'Communication issue', count:1},
+  {name:'PM – Maintenance', count:1},
+  {name:'PU Contact', count:1},
+  {name:'Cash Return', count:1},
+  {name:'Supervisor mode faulty', count:1},
+  {name:'Card Capture', count:1}
+];
+const rw1Issues = [
+  {name:'Dispenser issue', count:19},
+  {name:'Card reader jam', count:13},
+  {name:'No Transaction', count:10},
+  {name:'Communication issue', count:1},
+  {name:'Card Reader', count:1},
+  {name:'Card reader issues', count:1},
+  {name:'Card Capture', count:1},
+  {name:'Software Time Out', count:1}
+];
+function renderIssueList(elId, issues){
+  const max = issues[0].count;
+  document.getElementById(elId).innerHTML = issues.map(i => `
+    <div class="route-row">
+      <div class="route-name">${i.name}</div>
+      <div class="route-bar-bg"><div class="route-bar-fill" style="width:${(i.count/max*100).toFixed(0)}%;"></div></div>
+      <div class="route-pct">${i.count}</div>
+    </div>
+  `).join('');
+}
+renderIssueList('rw0List', rw0Issues);
+renderIssueList('rw1List', rw1Issues);
+
+const routing = [
+  {name:'ATM Helpdesk - CSCL', pct:89},
+  {name:'ATM Helpdesk', pct:8},
+  {name:'Off-site ATM security maint.', pct:1},
+  {name:'Riyadh Cash Center', pct:1}
+];
+document.getElementById('routingList').innerHTML = routing.map(r => `
+  <div class="route-row">
+    <div class="route-name">${r.name}</div>
+    <div class="route-bar-bg"><div class="route-bar-fill" style="width:${r.pct}%;"></div></div>
+    <div class="route-pct">${r.pct}%</div>
+  </div>
+`).join('');
+
+const longest = [
+  {id:'INC0002245220', terminal:'7L01800RW0', fault:'Dispenser issue', month:'March', hrs:38.4},
+  {id:'INC0002042386', terminal:'7L01800RW0', fault:'PU Contact', month:'January', hrs:26.1},
+  {id:'INC0002320873', terminal:'7L01800RW1', fault:'No Transaction', month:'April', hrs:21.3},
+  {id:'INC0002038924', terminal:'7L01800RW0', fault:'Cash Return', month:'January', hrs:20.7},
+  {id:'INC0002038936', terminal:'7L01800RW1', fault:'Card Reader', month:'January', hrs:20.5}
+];
+document.getElementById('longestTable').innerHTML = longest.map(r => `
+  <tr>
+    <td class="mono">${r.id}</td>
+    <td class="mono">${r.terminal}</td>
+    <td>${r.fault}</td>
+    <td>${r.month}</td>
+    <td><span class="pill ${r.hrs>30?'high':'mid'}">${r.hrs} hrs</span></td>
+  </tr>
+`).join('');
+
+const charts = [trendChart, faultChart, mttrChart, terminalChart, weekdayChart];
+
+function applyThemeToCharts(theme){
+  const gridColor = theme === 'light' ? '#E3E7F0' : '#1B2640';
+  const textColor = theme === 'light' ? '#6B7486' : '#8C97B3';
+  const cardBg = theme === 'light' ? '#FFFFFF' : '#121A2C';
+
+  charts.forEach(ch => {
+    const scales = ch.options.scales || {};
+    Object.values(scales).forEach(scale => {
+      if(scale.grid) scale.grid.color = gridColor;
+      scale.ticks = Object.assign({}, scale.ticks, {color:textColor});
+      if(scale.title) scale.title.color = textColor;
+    });
+    if(ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels){
+      ch.options.plugins.legend.labels.color = textColor;
+    }
+  });
+
+  faultChart.data.datasets[0].borderColor = cardBg;
+  charts.forEach(ch => ch.update());
+}
+
+const themeToggle = document.getElementById('themeToggle');
+const optDark = document.getElementById('optDark');
+const optLight = document.getElementById('optLight');
+const rootEl = document.documentElement;
+
+function setTheme(theme){
+  if(theme === 'light'){
+    rootEl.setAttribute('data-theme','light');
+    optLight.classList.add('active');
+    optDark.classList.remove('active');
+  } else {
+    rootEl.removeAttribute('data-theme');
+    optDark.classList.add('active');
+    optLight.classList.remove('active');
+  }
+  applyThemeToCharts(theme);
+  themeToggle.dataset.current = theme;
+}
+
+themeToggle.addEventListener('click', () => {
+  setTheme(themeToggle.dataset.current === 'light' ? 'dark' : 'light');
+});
+themeToggle.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); themeToggle.click(); }
+});
+
+const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+setTheme(prefersLight ? 'light' : 'dark');
+
+</script>
+
+</body>
+</html>
